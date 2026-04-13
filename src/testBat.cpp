@@ -16,6 +16,7 @@ void setup() {
   nicla::begin(); 
   BHY2.begin(); 
   stepCounter.begin();
+  nicla::enableCharging();
   
   if (!BLE.begin()) {
     while (1); 
