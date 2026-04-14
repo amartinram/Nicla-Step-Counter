@@ -3,31 +3,27 @@
 #include <ArduinoBLE.h>
 #include "Nicla_System.h" 
 
-// --- CONFIGURATION ---
-constexpr int DUMP_DAY = 30; 
-constexpr int MAX_DAYS_TO_STORE = 3; 
+constexpr int DUMP_DAY = 1440; 
+constexpr int MAX_DAYS_TO_STORE = 2; 
 constexpr int MAX_BUFFER = DUMP_DAY * MAX_DAYS_TO_STORE; 
-constexpr long MINUTE_INTERVAL = 1000; 
+constexpr long MINUTE_INTERVAL = 60000; 
 
-// --- BLE & SENSOR OBJECTS ---
 BLEService stepService("00001814-0000-1000-8000-00805f9b34fb"); 
-BLECharacteristic logChar("00002a37-0000-1000-8000-00805f9b34fb", BLERead | BLENotify, 512);
+BLECharacteristic logCharacteristic("00002a37-0000-1000-8000-00805f9b34fb", BLERead | BLENotify, 512);
 Sensor stepCounter(SENSOR_ID_STC);
 
-// --- GLOBAL VARIABLES FOR SENSOR & MEMORY ---
 static unsigned long previousMillis = 0;
 static uint32_t lastTotalSteps = 0;
 static uint8_t dailyLog[MAX_BUFFER]; 
 static int currentMinuteIndex = 0;
 static bool hasPendingData = false;
 
-// --- GLOBAL VARIABLES FOR BLE STATE MACHINE ---
-enum SyncState { IDLE, SEND_START, SEND_DATA, SEND_END, SEND_BATT };
-SyncState syncState = IDLE;
+enum StateMachine {IDLE, SEND_START, SEND_DATA, SEND_END, SEND_BATT};
+StateMachine stateMachine = IDLE;
 unsigned long lastBleTime = 0;
 int currentSendIndex = 0;
 int minutesToSend = 0;
-uint32_t totalForBatch = 0;
+uint32_t totalStepsTaken = 0;
 
 void setup() {
   nicla::begin(); 
@@ -40,13 +36,14 @@ void setup() {
   
   BLE.setLocalName("Nicla_Steps"); 
   BLE.setAdvertisedService(stepService);
-  stepService.addCharacteristic(logChar);
+  stepService.addCharacteristic(logCharacteristic);
   BLE.addService(stepService);
   
   BLE.advertise(); 
 }
 
 void loop() {
+
   unsigned long now = millis();
 
   BHY2.update(); 
@@ -74,27 +71,27 @@ void loop() {
 
   BLEDevice central = BLE.central();
   
-  if (hasPendingData && syncState == IDLE && central && central.connected() && logChar.subscribed()) {
-    syncState = SEND_START;
+  if (hasPendingData && stateMachine == IDLE && central && central.connected() && logCharacteristic.subscribed()) {
+    stateMachine = SEND_START;
     lastBleTime = now;
     currentSendIndex = 0;
-    totalForBatch = 0;
+    totalStepsTaken = 0;
     minutesToSend = currentMinuteIndex; 
   }
 
-  if (syncState != IDLE) {
+  if (stateMachine != IDLE) {
     
-    if (!central || !central.connected() || !logChar.subscribed()) {
-      syncState = IDLE; 
+    if (!central || !central.connected() || !logCharacteristic.subscribed()) {
+      stateMachine = IDLE; 
     }
     else if (now - lastBleTime >= 40) {
       lastBleTime = now;
 
-      switch (syncState) {
+      switch (stateMachine) {
         
         case SEND_START:
-          logChar.writeValue((const uint8_t*)"START", 5);
-          syncState = SEND_DATA;
+          logCharacteristic.writeValue((const uint8_t*)"START", 5);
+          stateMachine = SEND_DATA;
           break;
 
         case SEND_DATA: {
@@ -105,22 +102,22 @@ void loop() {
             
             for (int i = 0; i < chunkSize; i++) { 
               buffer[i] = dailyLog[currentSendIndex + i];
-              totalForBatch += buffer[i];
+              totalStepsTaken += buffer[i];
             }
             
-            logChar.writeValue(buffer, chunkSize);
+            logCharacteristic.writeValue(buffer, chunkSize);
             currentSendIndex += chunkSize;
           }else {
-            syncState = SEND_END;
+            stateMachine = SEND_END;
           }
           break;
         }
 
         case SEND_END: {
           char endMsg[32]; 
-          snprintf(endMsg, sizeof(endMsg), "END:%lu", totalForBatch);
-          logChar.writeValue((const uint8_t*)endMsg, strlen(endMsg));
-          syncState = SEND_BATT;
+          snprintf(endMsg, sizeof(endMsg), "END:%lu", totalStepsTaken);
+          logCharacteristic.writeValue((const uint8_t*)endMsg, strlen(endMsg));
+          stateMachine = SEND_BATT; //IDLE
 
           /*
           memmove(dailyLog, dailyLog + minutesToSend, currentMinuteIndex - minutesToSend);
@@ -135,13 +132,13 @@ void loop() {
         case SEND_BATT: {
           char battMsg[16];
           snprintf(battMsg, sizeof(battMsg), "BATT:%d", nicla::getBatteryVoltagePercentage());
-          logChar.writeValue((const uint8_t*)battMsg, strlen(battMsg));
+          logCharacteristic.writeValue((const uint8_t*)battMsg, strlen(battMsg));
 
           memmove(dailyLog, dailyLog + minutesToSend, currentMinuteIndex - minutesToSend);
           currentMinuteIndex -= minutesToSend;
           
           hasPendingData = false;
-          syncState = IDLE; 
+          stateMachine = IDLE; 
           break;
         }
         
