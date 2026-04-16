@@ -80,14 +80,8 @@ void loop() {
     stateMachine = SEND_HEADER;
     lastBleTime = now;
     currentSendIndex = 0;
-    
-    if (currentMinuteIndex > DUMP_DAY) {
-      minutesToSend = DUMP_DAY;
-    } else {
-      minutesToSend = currentMinuteIndex; 
-    }
+    minutesToSend = DUMP_DAY;
   }
-
 
   if (stateMachine != IDLE) {
     
@@ -142,7 +136,7 @@ void loop() {
             if (currentMinuteIndex < DUMP_DAY) {
               hasPendingData = false;
             }
-            
+
             stateMachine = IDLE; 
           }
           break;
