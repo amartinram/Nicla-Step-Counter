@@ -80,8 +80,14 @@ void loop() {
     stateMachine = SEND_HEADER;
     lastBleTime = now;
     currentSendIndex = 0;
-    minutesToSend = currentMinuteIndex; 
+    
+    if (currentMinuteIndex > DUMP_DAY) {
+      minutesToSend = DUMP_DAY;
+    } else {
+      minutesToSend = currentMinuteIndex; 
+    }
   }
+
 
   if (stateMachine != IDLE) {
     
@@ -133,7 +139,10 @@ void loop() {
             memmove(dailyLog, dailyLog + minutesToSend, currentMinuteIndex - minutesToSend);
             currentMinuteIndex -= minutesToSend;
             
-            hasPendingData = false;
+            if (currentMinuteIndex < DUMP_DAY) {
+              hasPendingData = false;
+            }
+            
             stateMachine = IDLE; 
           }
           break;
