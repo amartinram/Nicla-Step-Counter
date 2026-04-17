@@ -3,8 +3,7 @@
 void setup() {
   Serial.begin(115200);
   nicla::begin();
-  nicla::enableCharging(); 
-  // nicla::setBatteryNTCEnabled(true); // Default is true, keep it for 3-wire
+  nicla::enableCharging(100); 
 }
 
 void loop() {
@@ -14,7 +13,6 @@ void loop() {
   Serial.print("Battery Percentage: ");
   Serial.println(pct);
 
-  // Check the specific state
   if (status == OperatingStatus::Charging) {
     Serial.println("Status: Charging normally");
   } else if (status == OperatingStatus::ChargingComplete) {

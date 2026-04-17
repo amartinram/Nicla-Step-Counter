@@ -29,12 +29,12 @@ uint32_t totalStepsTaken = 0;
 constexpr unsigned long STATE_MACHINE_TIMER = 10000;
 BLEDevice central;
 
-void setup() {
+void setup(){
   nicla::begin(); 
   BHY2.begin(); 
   stepCounter.begin();
   
-  if (!BLE.begin()) {
+  if(!BLE.begin()) {
     while (1);
   }
   
@@ -50,65 +50,72 @@ void loop() {
   BHY2.update(); 
   BLE.poll();
 
-  if (now - previousMillis >= MINUTE_INTERVAL) {
+  if(now - previousMillis >= MINUTE_INTERVAL){
     previousMillis += MINUTE_INTERVAL; 
     
     uint32_t currentTotalSteps = stepCounter.value();
-    uint32_t stepsDiff = (currentTotalSteps >= lastTotalSteps) ? (currentTotalSteps - lastTotalSteps) : 0;
+    uint32_t stepsDiff;
+
+    if(currentTotalSteps >= lastTotalSteps){
+      stepsDiff = currentTotalSteps - lastTotalSteps;
+    }else{
+      stepsDiff = currentTotalSteps; 
+    }
+    
     uint8_t stepsThisMinute = (stepsDiff > 255) ? 255 : (uint8_t)stepsDiff; 
     lastTotalSteps = currentTotalSteps;
-    
-    if (currentMinuteIndex < MAX_BUFFER) {
+
+    if(currentMinuteIndex < MAX_BUFFER){
       dailyLog[currentMinuteIndex++] = stepsThisMinute;
     } /*else {
       memmove(dailyLog, dailyLog + 1, MAX_BUFFER - 1);
       dailyLog[MAX_BUFFER - 1] = stepsThisMinute;
     }*/
 
-    if (currentMinuteIndex >= DUMP_DAY && !hasPendingData) {
+    if(currentMinuteIndex >= DUMP_DAY){
       hasPendingData = true;
     }
   }
 
-  if (!central || !central.connected()) {
+  if(!central || !central.connected()){
       central = BLE.central();
   }
 
   bool shouldAdvertise = hasPendingData && (!central || !central.connected());
 
-  if (shouldAdvertise && !isAdvertising) {
+  if (shouldAdvertise && !isAdvertising){
     BLE.advertise();
     isAdvertising = true;
-  } else if (!shouldAdvertise && isAdvertising) {
+  }else if(!shouldAdvertise && isAdvertising) {
     BLE.stopAdvertise();
     isAdvertising = false;
   }
 
-  if (!hasPendingData && central && central.connected()) {
+  if(!hasPendingData && central && central.connected()){
     central.disconnect();
   }
   
-  if (hasPendingData && stateMachine == IDLE && central && central.connected() && logCharacteristic.subscribed()) {
+  if(hasPendingData && stateMachine == IDLE && central && central.connected() && logCharacteristic.subscribed()){
     stateMachine = SEND_HEADER;
     lastBleTime = now;
     currentSendIndex = 0;
     minutesToSend = DUMP_DAY;
   }
 
-  if (stateMachine != IDLE) {
-    if (now - lastBleTime > STATE_MACHINE_TIMER) {
+  if(stateMachine != IDLE){
+    if(now - lastBleTime > STATE_MACHINE_TIMER){
       stateMachine = IDLE;
     }
-    else if (!central || !central.connected() || !logCharacteristic.subscribed()) {
+    else if(!central || !central.connected() || !logCharacteristic.subscribed()){
       stateMachine = IDLE; 
     }
-    else if (now - lastBleTime >= 40) {
+    else if(now - lastBleTime >= 40){
       lastBleTime = now;
 
-      switch (stateMachine) {
-        case SEND_HEADER: {
+      switch (stateMachine){
+        case SEND_HEADER:{
           totalStepsTaken = 0;
-          for (int i = 0; i < minutesToSend; i++) { 
+          for(int i = 0; i < minutesToSend; i++){ 
             totalStepsTaken += dailyLog[i]; 
           }
 
@@ -129,20 +136,20 @@ void loop() {
           break;
         }
 
-        case SEND_DATA: {
+        case SEND_DATA:{
           int bytesRemaining = minutesToSend - currentSendIndex;
-          if (bytesRemaining > 0) {
+          if(bytesRemaining > 0){
             int chunkSize = (bytesRemaining > 244) ? 244 : bytesRemaining;
             uint8_t buffer[244];
             memcpy(buffer, dailyLog + currentSendIndex, chunkSize);
             
             logCharacteristic.writeValue(buffer, chunkSize);
             currentSendIndex += chunkSize;
-          } else {
+          }else{
             memmove(dailyLog, dailyLog + minutesToSend, currentMinuteIndex - minutesToSend);
             currentMinuteIndex -= minutesToSend;
             
-            if (currentMinuteIndex < DUMP_DAY) {
+            if(currentMinuteIndex < DUMP_DAY){
               hasPendingData = false; 
             }
             stateMachine = IDLE; 
