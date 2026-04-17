@@ -17,8 +17,9 @@ static uint32_t lastTotalSteps = 0;
 static uint8_t dailyLog[MAX_BUFFER]; 
 static int currentMinuteIndex = 0;
 static bool hasPendingData = false;
+static bool isAdvertising = false;
 
-enum StateMachine {IDLE, SEND_HEADER, SEND_DATA};
+enum StateMachine {IDLE,SEND_HEADER,SEND_DATA};
 StateMachine stateMachine = IDLE;
 unsigned long lastBleTime = 0;
 int currentSendIndex = 0;
@@ -41,8 +42,6 @@ void setup() {
   BLE.setAdvertisedService(stepService);
   stepService.addCharacteristic(logCharacteristic);
   BLE.addService(stepService);
-  
-  BLE.advertise(); 
 }
 
 void loop() {
@@ -56,7 +55,6 @@ void loop() {
     
     uint32_t currentTotalSteps = stepCounter.value();
     uint32_t stepsDiff = (currentTotalSteps >= lastTotalSteps) ? (currentTotalSteps - lastTotalSteps) : 0;
-    
     uint8_t stepsThisMinute = (stepsDiff > 255) ? 255 : (uint8_t)stepsDiff; 
     lastTotalSteps = currentTotalSteps;
     
@@ -67,13 +65,27 @@ void loop() {
       dailyLog[MAX_BUFFER - 1] = stepsThisMinute;
     }*/
 
-    if (currentMinuteIndex >= DUMP_DAY) {
+    if (currentMinuteIndex >= DUMP_DAY && !hasPendingData) {
       hasPendingData = true;
     }
   }
 
   if (!central || !central.connected()) {
       central = BLE.central();
+  }
+
+  bool shouldAdvertise = hasPendingData && (!central || !central.connected());
+
+  if (shouldAdvertise && !isAdvertising) {
+    BLE.advertise();
+    isAdvertising = true;
+  } else if (!shouldAdvertise && isAdvertising) {
+    BLE.stopAdvertise();
+    isAdvertising = false;
+  }
+
+  if (!hasPendingData && central && central.connected()) {
+    central.disconnect();
   }
   
   if (hasPendingData && stateMachine == IDLE && central && central.connected() && logCharacteristic.subscribed()) {
@@ -84,7 +96,6 @@ void loop() {
   }
 
   if (stateMachine != IDLE) {
-    
     if (now - lastBleTime > STATE_MACHINE_TIMER) {
       stateMachine = IDLE;
     }
@@ -95,7 +106,6 @@ void loop() {
       lastBleTime = now;
 
       switch (stateMachine) {
-        
         case SEND_HEADER: {
           totalStepsTaken = 0;
           for (int i = 0; i < minutesToSend; i++) { 
@@ -124,7 +134,6 @@ void loop() {
           if (bytesRemaining > 0) {
             int chunkSize = (bytesRemaining > 244) ? 244 : bytesRemaining;
             uint8_t buffer[244];
-            
             memcpy(buffer, dailyLog + currentSendIndex, chunkSize);
             
             logCharacteristic.writeValue(buffer, chunkSize);
@@ -134,14 +143,12 @@ void loop() {
             currentMinuteIndex -= minutesToSend;
             
             if (currentMinuteIndex < DUMP_DAY) {
-              hasPendingData = false;
+              hasPendingData = false; 
             }
-
             stateMachine = IDLE; 
           }
           break;
         }
-        
         case IDLE:
         default:
           break;
