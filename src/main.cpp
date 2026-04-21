@@ -9,7 +9,7 @@ constexpr int MAX_BUFFER = DUMP_DAY * MAX_DAYS_TO_STORE;
 constexpr long MINUTE_INTERVAL = 60000; 
 
 BLEService stepService("00001814-0000-1000-8000-00805f9b34fb"); 
-BLECharacteristic logCharacteristic("00002a37-0000-1000-8000-00805f9b34fb", BLERead | BLENotify, 512);
+BLECharacteristic logCharacteristic("00002a37-0000-1000-8000-00805f9b34fb", BLERead | BLENotify | BLEWrite, 512);
 Sensor stepCounter(SENSOR_ID_STC);
 
 static unsigned long previousMillis = 0;
@@ -18,7 +18,7 @@ static uint8_t dailyLog[MAX_BUFFER];
 static int currentMinuteIndex = 0;
 static bool hasPendingData = false;
 
-enum StateMachine {IDLE, SEND_HEADER, SEND_DATA};
+enum StateMachine {IDLE, SEND_HEADER, SEND_DATA , WAIT_ACK};
 StateMachine stateMachine = IDLE;
 unsigned long lastBleTime = 0;
 int currentSendIndex = 0;
@@ -27,6 +27,13 @@ uint32_t totalStepsTaken = 0;
 
 constexpr unsigned long STATE_MACHINE_TIMER = 10000;
 BLEDevice central;
+
+uint8_t getTrueBatteryLevel() {
+  int rawPercent = nicla::getBatteryVoltagePercentage();
+  if (rawPercent >= 95) return 100;
+  if (rawPercent <= 84) return 0;
+  return (uint8_t)map(rawPercent, 84, 95, 0, 100);
+}
 
 void setup() {
   nicla::begin(); 
@@ -42,6 +49,7 @@ void setup() {
   stepService.addCharacteristic(logCharacteristic);
   BLE.addService(stepService);
   
+  BLE.setAdvertisingInterval(1600);
   BLE.advertise(); 
 }
 
@@ -51,11 +59,29 @@ void loop() {
   BHY2.update(); 
   BLE.poll();
 
+  if (logCharacteristic.written() && logCharacteristic.valueLength() > 0) {
+    if (logCharacteristic.value()[0] == 0xCC && stateMachine == WAIT_ACK) {
+      memmove(dailyLog, dailyLog + minutesToSend, currentMinuteIndex - minutesToSend);
+      currentMinuteIndex -= minutesToSend;
+      
+      if (currentMinuteIndex < DUMP_DAY) {
+        hasPendingData = false;
+      }
+      stateMachine = IDLE;
+    }
+  }
+
   if (now - previousMillis >= MINUTE_INTERVAL) {
     previousMillis += MINUTE_INTERVAL; 
     
     uint32_t currentTotalSteps = stepCounter.value();
-    uint32_t stepsDiff = (currentTotalSteps >= lastTotalSteps) ? (currentTotalSteps - lastTotalSteps) : 0;
+    uint32_t stepsDiff;
+
+    if (currentTotalSteps >= lastTotalSteps) {
+      stepsDiff = currentTotalSteps - lastTotalSteps;
+    } else {
+      stepsDiff = currentTotalSteps; 
+    }
     
     uint8_t stepsThisMinute = (stepsDiff > 255) ? 255 : (uint8_t)stepsDiff; 
     lastTotalSteps = currentTotalSteps;
@@ -92,11 +118,10 @@ void loop() {
       stateMachine = IDLE; 
     }
     else if (now - lastBleTime >= 40) {
-      lastBleTime = now;
-
       switch (stateMachine) {
         
         case SEND_HEADER: {
+          lastBleTime = now;
           totalStepsTaken = 0;
           for (int i = 0; i < minutesToSend; i++) { 
             totalStepsTaken += dailyLog[i]; 
@@ -112,7 +137,7 @@ void loop() {
           header[5] = (totalStepsTaken >> 16) & 0xFF;
           header[6] = (totalStepsTaken >> 8) & 0xFF;
           header[7] = totalStepsTaken & 0xFF;
-          header[8] = nicla::getBatteryVoltagePercentage();
+          header[8] = getTrueBatteryLevel();
 
           logCharacteristic.writeValue(header, 9);
           stateMachine = SEND_DATA;
@@ -120,6 +145,7 @@ void loop() {
         }
 
         case SEND_DATA: {
+          lastBleTime = now;
           int bytesRemaining = minutesToSend - currentSendIndex;
           if (bytesRemaining > 0) {
             int chunkSize = (bytesRemaining > 244) ? 244 : bytesRemaining;
@@ -130,22 +156,19 @@ void loop() {
             logCharacteristic.writeValue(buffer, chunkSize);
             currentSendIndex += chunkSize;
           } else {
-            memmove(dailyLog, dailyLog + minutesToSend, currentMinuteIndex - minutesToSend);
-            currentMinuteIndex -= minutesToSend;
-            
-            if (currentMinuteIndex < DUMP_DAY) {
-              hasPendingData = false;
-            }
-
-            stateMachine = IDLE; 
+            stateMachine = WAIT_ACK; 
+            lastBleTime = now;
           }
           break;
         }
         
+        case WAIT_ACK:
         case IDLE:
         default:
           break;
       }
     }
+  } else {
+    delay(50);
   }
 }
