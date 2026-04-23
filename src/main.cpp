@@ -168,7 +168,9 @@ void loop() {
           break;
       }
     }
-  } else {
+  }else if (central && central.connected()) {
     delay(50);
+  } else {
+    delay(1000);
   }
 }
