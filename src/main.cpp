@@ -113,6 +113,9 @@ void loop() {
     
     if (now - lastBleTime > STATE_MACHINE_TIMER) {
       stateMachine = IDLE;
+      if (central) {
+        central.disconnect();
+      }
     }
     else if (!central || !central.connected() || !logCharacteristic.subscribed()) {
       stateMachine = IDLE; 
