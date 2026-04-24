@@ -172,9 +172,7 @@ void loop() {
           break;
       }
     }
-  }else if (central && central.connected()) {
-    delay(50);
-  } else {
+  }else {
     delay(1000);
   }
 }
