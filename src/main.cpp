@@ -37,6 +37,7 @@ uint8_t getTrueBatteryLevel() {
 
 void setup() {
   nicla::begin(); 
+  nicla::leds.setColor(off);
   BHY2.begin(); 
   stepCounter.begin();
   
