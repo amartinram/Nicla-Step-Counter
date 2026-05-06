@@ -72,3 +72,7 @@ void NiclaComm::advertise(){
 void NiclaComm::stopAdvertise(){
     BLE.stopAdvertise();
 }
+
+bool NiclaComm::isSuscribed(){
+    return _logCharacteristic.subscribed();
+}

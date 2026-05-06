@@ -31,7 +31,9 @@ class NiclaCounter{
         int getMinute();
 
     private:
-        uint8_t _dailyLog[MAX_BUFFER];
+        uint8_t _dailyLog[2][MAX_BUFFER];
+        uint8_t _activeBank = 0;
+        uint8_t _sendBank = 1;
         int _currentMinuteIndex = 0;
         int _dumpDay;
         unsigned long _minInterval;
@@ -84,11 +86,14 @@ void NiclaCounter<MAX_BUFFER>::recordSteps(){
     _lastTotalSteps = currentTotalSteps;
     
     if (_currentMinuteIndex < MAX_BUFFER) {
-      _dailyLog[_currentMinuteIndex++] = stepsThisMinute;
+      _dailyLog[_activeBank][_currentMinuteIndex++] = stepsThisMinute;
     }
     if (_currentMinuteIndex >= _dumpDay) {
-      _hasPendingData = true;
-      _currentMode = STEPSENDING;
+        _sendBank = _activeBank;
+        _activeBank = 1 - _activeBank;
+        _currentMinuteIndex = 0;
+        _hasPendingData = true;
+        _currentMode = STEPSENDING;
     }
 }
 
@@ -107,17 +112,9 @@ void NiclaCounter<MAX_BUFFER>::update(){
 
 template <size_t MAX_BUFFER>
 void NiclaCounter<MAX_BUFFER>::cleanBuffer(){
-    int remaining = _currentMinuteIndex - _dumpDay;
-
-    if(remaining > 0) {
-        memmove(_dailyLog, _dailyLog + _dumpDay, remaining);
-    }
-    _currentMinuteIndex = remaining;
-    
-    if(_currentMinuteIndex < _dumpDay) {
-        _hasPendingData = false;
-        _currentMode = STEPCOUNTING; 
-    }
+    memset(_dailyLog[_sendBank], 0, MAX_BUFFER); 
+    _hasPendingData = false;
+    _currentMode = STEPCOUNTING;
 }
 
 template <size_t MAX_BUFFER>
@@ -127,7 +124,7 @@ typename NiclaCounter<MAX_BUFFER>::OpMode NiclaCounter<MAX_BUFFER>::getMode(){
 
 template <size_t MAX_BUFFER>
 const uint8_t* NiclaCounter<MAX_BUFFER>::getBuffer() const{
-    return _dailyLog;
+    return _dailyLog[_sendBank];
 }
 
 template <size_t MAX_BUFFER>
@@ -136,12 +133,12 @@ int NiclaCounter<MAX_BUFFER>::getDumpDay() const{
 }
 
 template <size_t MAX_BUFFER>
-uint32_t NiclaCounter<MAX_BUFFER>::getTotalSteps(){
-    uint32_t _totalSteps = 0;
+uint32_t NiclaCounter<MAX_BUFFER>::getTotalSteps() {
+    uint32_t total = 0; 
     for (int i = 0; i < _dumpDay; i++) { 
-        _totalSteps += _dailyLog[i]; 
+        total += _dailyLog[_sendBank][i]; 
     }
-    return _totalSteps;
+    return total;
 }
 
 template <size_t MAX_BUFFER>

@@ -23,6 +23,8 @@ class NiclaComm{
         void advertise();
 
         void stopAdvertise();
+
+        bool isSuscribed();
         
     private:
         BLEService _stepService; 
