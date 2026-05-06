@@ -16,7 +16,7 @@ class NiclaCounter{
 
         void update();
 
-        void cleanBuffer(int minuteSend);
+        void cleanBuffer();
 
         enum OpMode{
             STEPCOUNTING,
@@ -27,7 +27,7 @@ class NiclaCounter{
 
         const uint8_t* getBuffer();
         const int getDumpDay();
-        uint32_t getTotalSteps(int length);
+        uint32_t getTotalSteps();
         int getMinute();
 
     private:
@@ -103,11 +103,11 @@ void NiclaCounter<MAX_BUFFER>::update(){
 }
 
 template <size_t MAX_BUFFER>
-void NiclaCounter<MAX_BUFFER>::cleanBuffer(int length){
-    int remaining = _currentMinuteIndex - length;
+void NiclaCounter<MAX_BUFFER>::cleanBuffer(){
+    int remaining = _currentMinuteIndex - _dumpDay;
 
     if(remaining > 0) {
-        memmove(_dailyLog, _dailyLog + length, remaining);
+        memmove(_dailyLog, _dailyLog + _dumpDay, remaining);
     }
     _currentMinuteIndex = remaining;
     
@@ -133,9 +133,9 @@ const int NiclaCounter<MAX_BUFFER>::getDumpDay(){
 }
 
 template <size_t MAX_BUFFER>
-uint32_t NiclaCounter<MAX_BUFFER>::getTotalSteps(int length){
+uint32_t NiclaCounter<MAX_BUFFER>::getTotalSteps(){
     _totalSteps = 0;
-    for (int i = 0; i < length; i++) { 
+    for (int i = 0; i < _dumpDay; i++) { 
         _totalSteps += _dailyLog[i]; 
     }
     return _totalSteps;

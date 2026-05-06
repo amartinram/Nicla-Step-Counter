@@ -33,7 +33,7 @@ bool NiclaComm::centralConnected(){
     return ok;
 }
 
-void NiclaComm::sendHeader(int length, uint32_t totalSteps, uint8_t battery){
+void NiclaComm::sendHeader(int length, uint32_t totalSteps, int8_t battery){
 
     uint8_t header[9];
     //First two bytes preamble to mark the start of a transaction

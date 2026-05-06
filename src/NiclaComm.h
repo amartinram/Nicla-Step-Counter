@@ -14,7 +14,7 @@ class NiclaComm{
 
         bool centralConnected();
 
-        void sendHeader(int length, uint32_t totalSteps, uint8_t battery);
+        void sendHeader(int length, uint32_t totalSteps, int8_t battery);
 
         bool sendPackets(const uint8_t* dailyLog, int length);
 

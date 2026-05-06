@@ -26,16 +26,34 @@ void StateMachine::idle(){
 
 void StateMachine::advertising(){
     if(_comm.centralConnected()){
-        
+        _headerSent = false;
+        transitionTo(&StateMachine::sendingSteps);
     }
 }
 
 void StateMachine::sendingSteps(){
+    if(!_headerSent){
+        _comm.sendHeader(Config::DUMP_DAY,
+            _counter.getTotalSteps(),
+            nicla::getBatteryVoltagePercentage());
+        _headerSent = true;
+        _lastPacketTime = millis();
+    }else if(millis() - _lastPacketTime >= 40){
+        bool finished = _comm.sendPackets(_counter.getBuffer(),Config::DUMP_DAY);
 
+        if(finished){
+            transitionTo(&StateMachine::waitAck);
+        }
+        _lastPacketTime = millis();
+    }
 }
 
 void StateMachine::waitAck(){
-
+    if(_comm.ackReceived()){
+        _counter.cleanBuffer();
+        _comm.stopAdvertise();
+        transitionTo(&StateMachine::idle);
+    }
 }
 
 void StateMachine::transitionTo(void(StateMachine::*nextTask)()){
