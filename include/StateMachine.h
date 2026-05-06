@@ -8,7 +8,9 @@
 class StateMachine{
 
     public:
+
         StateMachine();
+        
         void initialize();
 
         void run();

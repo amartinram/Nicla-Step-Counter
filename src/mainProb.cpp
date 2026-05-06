@@ -3,7 +3,8 @@
 StateMachine worker;
 
 void setup() {
-    worker.initialize();
+
+  worker.initialize();
 }
 
 void loop() {
