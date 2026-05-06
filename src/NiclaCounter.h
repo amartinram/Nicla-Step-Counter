@@ -14,8 +14,6 @@ class NiclaCounter{
 
         void beginSensor();
 
-        void timerInterrupt();
-
         void update();
 
         void cleanBuffer(int minuteSend);
@@ -27,16 +25,19 @@ class NiclaCounter{
     
         OpMode getMode();
 
-        uint8_t* getBuffer();
+        const uint8_t* getBuffer();
+        const int getDumpDay();
+        uint32_t getTotalSteps(int length);
+        int getMinute();
 
     private:
         uint8_t _dailyLog[MAX_BUFFER];
-        int _currentMinuteIndex;
+        int _currentMinuteIndex = 0;
         int _dumpDay;
         unsigned long _minInterval;
-        uint32_t _lastTotalSteps;
-        OpMode _currentMode;
-        boolean _hasPendingData;
+        uint32_t _totalSteps = 0;
+        OpMode _currentMode = STEPCOUNTING;
+        bool _hasPendingData = false;
 
         Sensor _stepCounter{SENSOR_ID_STC};
         mbed::Ticker _ticker;
@@ -44,17 +45,14 @@ class NiclaCounter{
 
         void recordSteps();
         void irqHandler();
+        
 };
 
 template <size_t MAX_BUFFER>
-NiclaCounter<MAX_BUFFER>::NiclaCounter(int dumpDay, unsigned long minInterval){
-    _dumpDay = dumpDay;
-    _minInterval = minInterval;
-    _currentMinuteIndex = 0;
-    _lastTotalSteps = 0;
-    _currentMode = STEPCOUNTING;
-    _hasPendingData = false;
-}
+NiclaCounter<MAX_BUFFER>::NiclaCounter(int dumpDay, unsigned long minInterval):
+     _dumpDay(dumpDay), _minInterval(minInterval) 
+{}
+
 
 template <size_t MAX_BUFFER>
 void NiclaCounter<MAX_BUFFER>::beginSensor(){
@@ -62,7 +60,7 @@ void NiclaCounter<MAX_BUFFER>::beginSensor(){
     nicla::leds.setColor(off);
     BHY2.begin(); 
     _stepCounter.begin();
-    _ticker.attach(mbed::callback(this,NiclaCounter::irqHandler,60.0));
+    _ticker.attach(mbed::callback(this,&NiclaCounter::irqHandler),(float)_minInterval/1000);
 }
 
 
@@ -73,20 +71,21 @@ void NiclaCounter<MAX_BUFFER>::recordSteps(){
     uint32_t currentTotalSteps = _stepCounter.value();
     uint32_t stepsDiff;
 
-    if (currentTotalSteps >= lastTotalSteps) {
-      stepsDiff = currentTotalSteps - lastTotalSteps;
+    if (currentTotalSteps >= _lastTotalSteps) {
+      stepsDiff = currentTotalSteps - _lastTotalSteps;
     } else {
       stepsDiff = currentTotalSteps; 
     }
     
     uint8_t stepsThisMinute = (stepsDiff > 255) ? 255 : (uint8_t)stepsDiff; 
-    lastTotalSteps = currentTotalSteps;
+    _lastTotalSteps = currentTotalSteps;
     
     if (_currentMinuteIndex < MAX_BUFFER) {
       _dailyLog[_currentMinuteIndex++] = stepsThisMinute;
     }
-    if (_currentMinuteIndex >= DUMP_DAY) {
+    if (_currentMinuteIndex >= _dumpDay) {
       _hasPendingData = true;
+      _currentMode = STEPSENDING;
     }
 }
 
@@ -104,17 +103,17 @@ void NiclaCounter<MAX_BUFFER>::update(){
 }
 
 template <size_t MAX_BUFFER>
-void NiclaCounter<MAX_BUFFER>::timerInterrupt(){
-     
-}
+void NiclaCounter<MAX_BUFFER>::cleanBuffer(int length){
+    int remaining = _currentMinuteIndex - length;
 
-template <size_t MAX_BUFFER>
-void NiclaCounter<MAX_BUFFER>::cleanBuffer(int minuteSend){
-    memmove(_dailyLog, _dailyLog + _dumpDay, _currentMinuteIndex - _dumpDay);
-    _currentMinuteIndex -= _dumpDay;
-      
-    if (_currentMinuteIndex < DUMP_DAY) {
-       _hasPendingData = false;
+    if(remaining > 0) {
+        memmove(_dailyLog, _dailyLog + length, remaining);
+    }
+    _currentMinuteIndex = remaining;
+    
+    if(_currentMinuteIndex < _dumpDay) {
+        _hasPendingData = false;
+        _currentMode = STEPCOUNTING; 
     }
 }
 
@@ -124,8 +123,27 @@ typename NiclaCounter<MAX_BUFFER>::OpMode NiclaCounter<MAX_BUFFER>::getMode(){
 }
 
 template <size_t MAX_BUFFER>
-uint8_t* NiclaCounter<MAX_BUFFER>::getBuffer(){
+const uint8_t* NiclaCounter<MAX_BUFFER>::getBuffer(){
     return _dailyLog;
+}
+
+template <size_t MAX_BUFFER>
+const int NiclaCounter<MAX_BUFFER>::getDumpDay(){
+    return _dumpDay;
+}
+
+template <size_t MAX_BUFFER>
+uint32_t NiclaCounter<MAX_BUFFER>::getTotalSteps(int length){
+    _totalSteps = 0;
+    for (int i = 0; i < length; i++) { 
+        _totalSteps += _dailyLog[i]; 
+    }
+    return _totalSteps;
+}
+
+template <size_t MAX_BUFFER>
+int NiclaCounter<MAX_BUFFER>::getMinute(){
+    return _currentMinuteIndex;
 }
 
 #endif
