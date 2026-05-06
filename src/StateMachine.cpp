@@ -13,12 +13,13 @@ void StateMachine::initialize(){
 }
 
 void StateMachine::run(){
+    BLE.poll();
+    _counter.update();
     (this->*_currentTask)();
 }
 
 void StateMachine::idle(){
-    _counter.update();
-    if(_counter.getMinute() >= Config::DUMP_DAY){
+    if(_counter.getMode() == NiclaCounter<Config::MAX_BUFFER>::STEPSENDING){
         _comm.advertise();
         transitionTo(&StateMachine::advertising);
     }
@@ -32,28 +33,40 @@ void StateMachine::advertising(){
 }
 
 void StateMachine::sendingSteps(){
-    if(!_headerSent){
-        _comm.sendHeader(Config::DUMP_DAY,
+    if(_comm.centralConnected()){
+        if(!_headerSent){
+            _comm.sendHeader(Config::DUMP_DAY,
             _counter.getTotalSteps(),
             nicla::getBatteryVoltagePercentage());
-        _headerSent = true;
-        _lastPacketTime = millis();
-    }else if(millis() - _lastPacketTime >= 40){
-        bool finished = _comm.sendPackets(_counter.getBuffer(),Config::DUMP_DAY);
+            _headerSent = true;
+            _lastPacketTime = millis();
+        }else if(millis() - _lastPacketTime >= 40){
+            bool finished = _comm.sendPackets(_counter.getBuffer(),Config::DUMP_DAY);
 
-        if(finished){
-            transitionTo(&StateMachine::waitAck);
+            if(finished){
+                transitionTo(&StateMachine::waitAck);
+            }
+            _lastPacketTime = millis();
         }
-        _lastPacketTime = millis();
-    }
-}
-
-void StateMachine::waitAck(){
-    if(_comm.ackReceived()){
-        _counter.cleanBuffer();
+    }else{
         _comm.stopAdvertise();
         transitionTo(&StateMachine::idle);
     }
+    
+}
+
+void StateMachine::waitAck(){
+    if(_comm.centralConnected()){
+        if(_comm.ackReceived()){
+            _counter.cleanBuffer();
+            _comm.stopAdvertise();
+            transitionTo(&StateMachine::idle);
+        }
+    }else{
+        _comm.stopAdvertise();
+        transitionTo(&StateMachine::idle);
+    }
+    
 }
 
 void StateMachine::transitionTo(void(StateMachine::*nextTask)()){

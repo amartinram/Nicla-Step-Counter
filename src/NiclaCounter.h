@@ -25,8 +25,8 @@ class NiclaCounter{
     
         OpMode getMode();
 
-        const uint8_t* getBuffer();
-        const int getDumpDay();
+        uint8_t* getBuffer() const;
+        int getDumpDay() const;
         uint32_t getTotalSteps();
         int getMinute();
 
@@ -35,7 +35,10 @@ class NiclaCounter{
         int _currentMinuteIndex = 0;
         int _dumpDay;
         unsigned long _minInterval;
-        uint32_t _totalSteps = 0;
+
+        
+        uint32_t _lastTotalSteps = 0;
+
         OpMode _currentMode = STEPCOUNTING;
         bool _hasPendingData = false;
 
@@ -123,18 +126,18 @@ typename NiclaCounter<MAX_BUFFER>::OpMode NiclaCounter<MAX_BUFFER>::getMode(){
 }
 
 template <size_t MAX_BUFFER>
-const uint8_t* NiclaCounter<MAX_BUFFER>::getBuffer(){
+uint8_t* NiclaCounter<MAX_BUFFER>::getBuffer() const{
     return _dailyLog;
 }
 
 template <size_t MAX_BUFFER>
-const int NiclaCounter<MAX_BUFFER>::getDumpDay(){
+int NiclaCounter<MAX_BUFFER>::getDumpDay() const{
     return _dumpDay;
 }
 
 template <size_t MAX_BUFFER>
 uint32_t NiclaCounter<MAX_BUFFER>::getTotalSteps(){
-    _totalSteps = 0;
+    uint32_t _totalSteps = 0;
     for (int i = 0; i < _dumpDay; i++) { 
         _totalSteps += _dailyLog[i]; 
     }

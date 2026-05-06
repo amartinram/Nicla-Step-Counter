@@ -29,11 +29,11 @@ class StateMachine{
 
         void transitionTo(StatePtr nextTask);
 
-        NiclaComm _comm;
         NiclaCounter<Config::MAX_BUFFER> _counter;
-
+        NiclaComm _comm;
+        
         bool _headerSent;
         unsigned long _lastPacketTime;
 };
 
-#endif;
+#endif
