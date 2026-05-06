@@ -25,7 +25,7 @@ class NiclaCounter{
     
         OpMode getMode();
 
-        uint8_t* getBuffer() const;
+        const uint8_t* getBuffer() const;
         int getDumpDay() const;
         uint32_t getTotalSteps();
         int getMinute();
@@ -126,7 +126,7 @@ typename NiclaCounter<MAX_BUFFER>::OpMode NiclaCounter<MAX_BUFFER>::getMode(){
 }
 
 template <size_t MAX_BUFFER>
-uint8_t* NiclaCounter<MAX_BUFFER>::getBuffer() const{
+const uint8_t* NiclaCounter<MAX_BUFFER>::getBuffer() const{
     return _dailyLog;
 }
 
