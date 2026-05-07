@@ -3,6 +3,7 @@
 
 #include <Arduino.h>
 #include <ArduinoBLE.h>
+#include <mbed.h>
 
 class NiclaComm{
     public:
@@ -20,17 +21,16 @@ class NiclaComm{
 
         int getOffset();
 
-        void advertise();
+        bool isSubscribed();
 
-        void stopAdvertise();
+        void bluetoothOn();
 
-        bool isSuscribed();
+        void bluetoothOff();
         
     private:
         BLEService _stepService; 
         BLECharacteristic _logCharacteristic;
         int _offset = 0;
-
 };
 
 #endif

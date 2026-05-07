@@ -72,7 +72,6 @@ void NiclaCounter<MAX_BUFFER>::beginSensor(){
 
 template <size_t MAX_BUFFER>
 void NiclaCounter<MAX_BUFFER>::recordSteps(){
-    BHY2.update(); 
     uint32_t currentTotalSteps = _stepCounter.value();
     uint32_t stepsDiff;
 
@@ -104,6 +103,7 @@ void NiclaCounter<MAX_BUFFER>::irqHandler(){
 
 template <size_t MAX_BUFFER>
 void NiclaCounter<MAX_BUFFER>::update(){
+    BHY2.update(); 
     if(_tickerOk){
         _tickerOk = false;
         recordSteps();

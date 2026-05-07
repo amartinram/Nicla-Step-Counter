@@ -15,6 +15,8 @@ class StateMachine{
 
         void run();
 
+        int getSleepTime();
+
 
     private:
 
@@ -36,6 +38,8 @@ class StateMachine{
         
         bool _headerSent;
         unsigned long _lastPacketTime;
+        unsigned long _lastAttempt;
+        unsigned long _stateStartTime;
 };
 
 #endif

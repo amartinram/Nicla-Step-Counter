@@ -1,19 +1,21 @@
 #include "NiclaComm.h"
 
+
 NiclaComm::NiclaComm():
     _stepService("00001814-0000-1000-8000-00805f9b34fb"), 
     _logCharacteristic("00002a37-0000-1000-8000-00805f9b34fb", BLERead | BLENotify | BLEWrite, 512)
     {}
 
 void NiclaComm::begin(){
-  if (!BLE.begin()) {
-    while (1);
-  }
-  
-  BLE.setLocalName("Nicla_Steps"); 
-  BLE.setAdvertisedService(_stepService);
-  _stepService.addCharacteristic(_logCharacteristic);
-  BLE.addService(_stepService);
+    if (!BLE.begin()) {
+        while (1);
+    } 
+    
+    BLE.setLocalName("Nicla_Steps"); 
+    BLE.setAdvertisedService(_stepService);
+    _stepService.addCharacteristic(_logCharacteristic);
+    BLE.addService(_stepService);
+
 }
 
 bool NiclaComm::ackReceived(){
@@ -36,7 +38,6 @@ bool NiclaComm::centralConnected(){
 void NiclaComm::sendHeader(int length, uint32_t totalSteps, int8_t battery){
 
     uint8_t header[9];
-    //First two bytes preamble to mark the start of a transaction
     header[0] = 0xAA; 
     header[1] = 0xBB; 
     header[2] = (length >> 8) & 0xFF;
@@ -65,14 +66,17 @@ bool NiclaComm::sendPackets(const uint8_t* dailyLog, int length){
     return _offset == length;
 }
 
-void NiclaComm::advertise(){
-  BLE.advertise(); 
-}
 
-void NiclaComm::stopAdvertise(){
-    BLE.stopAdvertise();
-}
-
-bool NiclaComm::isSuscribed(){
+bool NiclaComm::isSubscribed(){
     return _logCharacteristic.subscribed();
+}
+
+void NiclaComm::bluetoothOn(){
+    BLE.advertise();
+}
+
+void NiclaComm::bluetoothOff(){
+    BLE.disconnect();
+    rtos::ThisThread::sleep_for(std::chrono::milliseconds(50));
+    BLE.stopAdvertise();
 }
