@@ -6,15 +6,29 @@ NiclaComm::NiclaComm():
     _logCharacteristic("00002a37-0000-1000-8000-00805f9b34fb", BLERead | BLENotify | BLEWrite, 512)
     {}
 
-void NiclaComm::begin(){
-    if (!BLE.begin()) {
-        while (1);
-    } 
+bool NiclaComm::begin(){
+    bool ok = false;
+    int attempt = 3;
+
+    while (!BLE.begin() && attempt > 0) {
+        rtos::ThisThread::sleep_for(std::chrono::milliseconds(100));
+        attempt--;
+    }
     
-    BLE.setLocalName("Nicla_Steps"); 
-    BLE.setAdvertisedService(_stepService);
-    _stepService.addCharacteristic(_logCharacteristic);
-    BLE.addService(_stepService);
+    if(attempt > 0){
+        if (!_isSetup) {
+            BLE.setLocalName("Nicla_Steps"); 
+            BLE.setAdvertisedService(_stepService);
+            _stepService.addCharacteristic(_logCharacteristic);
+            BLE.addService(_stepService);
+            _isSetup = true; 
+        }
+        
+        _logCharacteristic.writeValue((uint8_t)0);
+        ok = true; 
+    }
+    
+    return ok;
 
 }
 
@@ -71,12 +85,18 @@ bool NiclaComm::isSubscribed(){
     return _logCharacteristic.subscribed();
 }
 
-void NiclaComm::bluetoothOn(){
-    BLE.advertise();
+bool NiclaComm::bluetoothOn(){
+    bool ok = false;
+    if(begin()){
+        BLE.advertise();
+        ok = true;
+    }
+    return ok;
 }
 
 void NiclaComm::bluetoothOff(){
     BLE.disconnect();
     rtos::ThisThread::sleep_for(std::chrono::milliseconds(50));
-    BLE.stopAdvertise();
+    BLE.end();
+    _isSetup = false;
 }

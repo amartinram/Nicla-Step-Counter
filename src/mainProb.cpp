@@ -9,5 +9,5 @@ void setup() {
 
 void loop() {
     worker.run();
-    rtos::ThisThread::sleep_for(std::chrono::milliseconds(10));
+    rtos::ThisThread::sleep_for(std::chrono::milliseconds(worker.getSleepTime()));
 }

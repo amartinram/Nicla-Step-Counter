@@ -11,12 +11,13 @@ StateMachine::StateMachine():
 {}
 void StateMachine::initialize(){
     _counter.beginSensor();
-    _comm.begin();
 }
 
 
 void StateMachine::run(){
-    BLE.poll();
+    if(_currentTask != &StateMachine::idle){
+        BLE.poll(); 
+    }
     _counter.update();
     (this->*_currentTask)();
 }
@@ -24,10 +25,12 @@ void StateMachine::run(){
 void StateMachine::idle(){
     if(_counter.getMode() == NiclaCounter<Config::MAX_BUFFER>::STEPSENDING &&
         (_lastAttempt == 0 || millis() - _lastAttempt >= Config::BLE_RETRY_INTERVAL)){
-    
-        _comm.bluetoothOn();
-        _stateStartTime = millis(); 
-        transitionTo(&StateMachine::advertising);
+        if (_comm.bluetoothOn()) {
+            _stateStartTime = millis(); 
+            transitionTo(&StateMachine::advertising);
+        } else {
+            _lastAttempt = millis();
+        }
     }
 }
 

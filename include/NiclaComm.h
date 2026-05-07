@@ -9,7 +9,7 @@ class NiclaComm{
     public:
         NiclaComm();
 
-        void begin();
+        bool begin();
 
         bool ackReceived();
 
@@ -23,7 +23,7 @@ class NiclaComm{
 
         bool isSubscribed();
 
-        void bluetoothOn();
+        bool bluetoothOn();
 
         void bluetoothOff();
         
@@ -31,6 +31,7 @@ class NiclaComm{
         BLEService _stepService; 
         BLECharacteristic _logCharacteristic;
         int _offset = 0;
+        bool _isSetup = false;
 };
 
 #endif
