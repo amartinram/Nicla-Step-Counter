@@ -9,7 +9,6 @@
 template <size_t MAX_BUFFER>
 class NiclaCounter{
     public:
-        
         NiclaCounter(int dumpDay, unsigned long minInterval);
 
         void beginSensor();
@@ -18,16 +17,14 @@ class NiclaCounter{
 
         void cleanBuffer();
 
-        enum OpMode{
-            STEPCOUNTING,
-            STEPSENDING
-        };
-    
-        OpMode getMode();
+        bool hasPendingData() const;
 
         const uint8_t* getBuffer() const;
+
         int getDumpDay() const;
+
         uint32_t getTotalSteps();
+
         int getMinute();
 
     private:
@@ -37,11 +34,8 @@ class NiclaCounter{
         int _currentMinuteIndex = 0;
         int _dumpDay;
         unsigned long _minInterval;
-
-        
         uint32_t _lastTotalSteps = 0;
 
-        OpMode _currentMode = STEPCOUNTING;
         bool _hasPendingData = false;
 
         Sensor _stepCounter{SENSOR_ID_STC};
@@ -50,14 +44,11 @@ class NiclaCounter{
 
         void recordSteps();
         void irqHandler();
-        
 };
 
 template <size_t MAX_BUFFER>
 NiclaCounter<MAX_BUFFER>::NiclaCounter(int dumpDay, unsigned long minInterval):
-     _dumpDay(dumpDay), _minInterval(minInterval) 
-{}
-
+     _dumpDay(dumpDay), _minInterval(minInterval) {}
 
 template <size_t MAX_BUFFER>
 void NiclaCounter<MAX_BUFFER>::beginSensor(){
@@ -67,8 +58,6 @@ void NiclaCounter<MAX_BUFFER>::beginSensor(){
     _stepCounter.begin();
     _ticker.attach(mbed::callback(this,&NiclaCounter::irqHandler),(float)_minInterval/1000);
 }
-
-
 
 template <size_t MAX_BUFFER>
 void NiclaCounter<MAX_BUFFER>::recordSteps(){
@@ -87,12 +76,12 @@ void NiclaCounter<MAX_BUFFER>::recordSteps(){
     if (_currentMinuteIndex < MAX_BUFFER) {
       _dailyLog[_activeBank][_currentMinuteIndex++] = stepsThisMinute;
     }
+    
     if (_currentMinuteIndex >= _dumpDay) {
         _sendBank = _activeBank;
         _activeBank = 1 - _activeBank;
         _currentMinuteIndex = 0;
         _hasPendingData = true;
-        _currentMode = STEPSENDING;
     }
 }
 
@@ -104,6 +93,7 @@ void NiclaCounter<MAX_BUFFER>::irqHandler(){
 template <size_t MAX_BUFFER>
 void NiclaCounter<MAX_BUFFER>::update(){
     BHY2.update(); 
+    
     if(_tickerOk){
         _tickerOk = false;
         recordSteps();
@@ -114,12 +104,11 @@ template <size_t MAX_BUFFER>
 void NiclaCounter<MAX_BUFFER>::cleanBuffer(){
     memset(_dailyLog[_sendBank], 0, MAX_BUFFER); 
     _hasPendingData = false;
-    _currentMode = STEPCOUNTING;
 }
 
 template <size_t MAX_BUFFER>
-typename NiclaCounter<MAX_BUFFER>::OpMode NiclaCounter<MAX_BUFFER>::getMode(){
-    return _currentMode;
+bool NiclaCounter<MAX_BUFFER>::hasPendingData() const{
+    return _hasPendingData;
 }
 
 template <size_t MAX_BUFFER>

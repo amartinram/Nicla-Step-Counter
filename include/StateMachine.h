@@ -6,20 +6,16 @@
 #include "Config.h"
 
 class StateMachine{
-
     public:
-
         StateMachine();
-        
+
         void initialize();
 
         void run();
 
         int getSleepTime();
 
-
     private:
-
         typedef void (StateMachine::*StatePtr)();
         StatePtr _currentTask;
 
@@ -30,7 +26,7 @@ class StateMachine{
         void sendingSteps();
 
         void waitAck();
-
+        
         void transitionTo(StatePtr nextTask);
 
         NiclaCounter<Config::MAX_BUFFER> _counter;
