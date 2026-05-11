@@ -29,7 +29,7 @@ class StateMachine{
         
         void transitionTo(StatePtr nextTask);
 
-        NiclaCounter<Config::MAX_BUFFER> _counter;
+        NiclaCounter<Config::DUMP_DAY,Config::MAX_DAYS> _counter;
         NiclaComm _comm;
         
         bool _headerSent;

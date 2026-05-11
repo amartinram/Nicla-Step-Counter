@@ -1,7 +1,7 @@
 #include "StateMachine.h"
 
 StateMachine::StateMachine():
-    _counter(Config::DUMP_DAY,Config::MINUTE_INTERVAL), 
+    _counter(Config::MINUTE_INTERVAL), 
     _currentTask(&StateMachine::idle),
     _headerSent(false),
     _lastPacketTime(0),
