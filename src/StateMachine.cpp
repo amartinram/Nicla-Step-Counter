@@ -108,3 +108,7 @@ int StateMachine::getSleepTime(){
     }
     return sleep;
 }
+
+void StateMachine::sleep(int ms){
+    _counter.waitForInterrupt(ms);
+}

@@ -15,6 +15,8 @@ class StateMachine{
 
         int getSleepTime();
 
+        void sleep(int ms);
+
     private:
         typedef void (StateMachine::*StatePtr)();
         StatePtr _currentTask;

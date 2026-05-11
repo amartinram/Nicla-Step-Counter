@@ -5,6 +5,7 @@
 #include "Arduino_BHY2.h"
 #include "Nicla_System.h" 
 #include <mbed.h>
+#include <rtos.h>
 
 template <size_t DUMP_DAY, size_t MAX_DAYS>
 class NiclaCounter{
@@ -20,6 +21,7 @@ class NiclaCounter{
         int getDumpDay() const;
         uint32_t getTotalSteps() const;
         int getMinute() const;
+        void waitForInterrupt(int ms);
 
     private:
         uint8_t _activeLog[DUMP_DAY];
@@ -37,6 +39,7 @@ class NiclaCounter{
         mbed::Ticker _ticker;
         volatile bool _tickerOk = false;
 
+        rtos::Semaphore _wakeSignal{0, 1};
         void recordSteps();
         void irqHandler();
         void pushDay(); 
@@ -54,7 +57,7 @@ void NiclaCounter<DUMP_DAY, MAX_DAYS>::beginSensor(){
     nicla::begin(); 
     nicla::leds.setColor(off);
     BHY2.begin(); 
-    _stepCounter.begin(0.0f, _minInterval);
+    _stepCounter.begin();
     _ticker.attach(mbed::callback(this,&NiclaCounter::irqHandler),(float)_minInterval/1000);
 }
 
@@ -100,6 +103,7 @@ void NiclaCounter<DUMP_DAY, MAX_DAYS>::recordSteps(){
 template <size_t DUMP_DAY, size_t MAX_DAYS>
 void NiclaCounter<DUMP_DAY, MAX_DAYS>::irqHandler(){
     _tickerOk = true;
+    _wakeSignal.release();
 }
 
 template <size_t DUMP_DAY, size_t MAX_DAYS>
@@ -149,6 +153,11 @@ uint32_t NiclaCounter<DUMP_DAY, MAX_DAYS>::getTotalSteps() const {
 template <size_t DUMP_DAY, size_t MAX_DAYS>
 int NiclaCounter<DUMP_DAY, MAX_DAYS>::getMinute() const{
     return _currentMinuteIndex;
+}
+
+template<size_t DUMP_DAY, size_t MAX_DAYS>
+void NiclaCounter<DUMP_DAY,MAX_DAYS>::waitForInterrupt(int ms){
+    _wakeSignal.try_acquire_for(std::chrono::milliseconds(ms));
 }
 
 #endif
