@@ -15,7 +15,9 @@ void StateMachine::initialize(){
 }
 
 void StateMachine::run(){
-    BLE.poll();
+    if(_currentTask != &StateMachine::idle){
+        BLE.poll(); 
+    }
     _counter.update();
     (this->*_currentTask)();
 }
@@ -25,6 +27,7 @@ void StateMachine::idle(){
         _comm.bluetoothOn();
         _stateStartTime = millis(); 
         transitionTo(&StateMachine::advertising);
+        
     }
 }
 
@@ -62,19 +65,35 @@ void StateMachine::sendingSteps(){
 }
 
 void StateMachine::waitAck(){
+    static unsigned long delayStart = 0;
+    static bool isDelaying = false;
     bool exit = false;
 
-    if (!_comm.centralConnected() || (millis() - _stateStartTime >= Config::BLE_ACK_TIMEOUT)) {
-        _lastAttempt = millis(); 
-        exit = true;
-    }else if (_comm.ackReceived()) {
-        _counter.cleanBuffer();
-        exit = true;
-    }
-
-    if (exit) {
-        _comm.bluetoothOff();
-        transitionTo(&StateMachine::idle);
+    if (isDelaying) {
+        if (millis() - delayStart >= 200) {
+            isDelaying = false;
+            _headerSent = false;
+            _stateStartTime = millis();
+            transitionTo(&StateMachine::sendingSteps);
+        }
+    } 
+    else {
+        if (!_comm.centralConnected() || (millis() - _stateStartTime >= Config::BLE_ACK_TIMEOUT)) {
+            _lastAttempt = millis(); 
+            exit = true;
+        } else if (_comm.ackReceived()) {
+            _counter.cleanBuffer();
+            if (_counter.hasPendingData()) {
+                isDelaying = true;
+                delayStart = millis();
+            } else {
+                exit = true;
+            }
+        }
+        if (exit) {
+            _comm.bluetoothOff();
+            transitionTo(&StateMachine::idle);
+        }
     }
 }
 
@@ -83,7 +102,7 @@ void StateMachine::transitionTo(void(StateMachine::*nextTask)()){
 }
 
 int StateMachine::getSleepTime(){
-    int sleep = 200;
+    int sleep = Config::MINUTE_INTERVAL - 50;
     if(_currentTask != &StateMachine::idle){
         sleep = 10;
     }

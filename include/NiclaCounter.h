@@ -54,7 +54,7 @@ void NiclaCounter<DUMP_DAY, MAX_DAYS>::beginSensor(){
     nicla::begin(); 
     nicla::leds.setColor(off);
     BHY2.begin(); 
-    _stepCounter.begin();
+    _stepCounter.begin(0.0f, _minInterval);
     _ticker.attach(mbed::callback(this,&NiclaCounter::irqHandler),(float)_minInterval/1000);
 }
 

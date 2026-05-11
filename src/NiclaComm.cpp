@@ -6,14 +6,16 @@ NiclaComm::NiclaComm():
 {}
 
 void NiclaComm::begin(){
-    if (!BLE.begin()) {
-        while (1);
-    } 
+    while (!BLE.begin()) {
+        rtos::ThisThread::sleep_for(std::chrono::milliseconds(100));
+    }
     
     BLE.setLocalName("Nicla_Steps"); 
     BLE.setAdvertisedService(_stepService);
     _stepService.addCharacteristic(_logCharacteristic);
     BLE.addService(_stepService);
+    
+    _logCharacteristic.writeValue((uint8_t)0);
 }
 
 bool NiclaComm::ackReceived(){
