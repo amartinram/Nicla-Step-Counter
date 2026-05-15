@@ -6,7 +6,9 @@ StateMachine::StateMachine():
     _headerSent(false),
     _lastPacketTime(0),
     _lastAttempt(0),
-    _stateStartTime(0)
+    _stateStartTime(0),
+    _delayStart(0),
+    _isDelaying(false)
 {}
 
 void StateMachine::initialize(){
@@ -49,7 +51,7 @@ void StateMachine::sendingSteps(){
             _comm.sendHeader(Config::DUMP_DAY,_counter.getTotalSteps(),nicla::getBatteryVoltagePercentage());
             _headerSent = true;
             _lastPacketTime = millis();
-        }else if(millis() - _lastPacketTime >= 100){
+        }else if(millis() - _lastPacketTime >= 20){
             bool finished = _comm.sendPackets(_counter.getBuffer(),Config::DUMP_DAY);
             if(finished){
                 _stateStartTime = millis();
@@ -65,13 +67,11 @@ void StateMachine::sendingSteps(){
 }
 
 void StateMachine::waitAck(){
-    static unsigned long delayStart = 0;
-    static bool isDelaying = false;
     bool exit = false;
 
-    if (isDelaying) {
-        if (millis() - delayStart >= 200) {
-            isDelaying = false;
+    if (_isDelaying) {
+        if (millis() - _delayStart >= 200) {
+            _isDelaying = false;
             _headerSent = false;
             _stateStartTime = millis();
             transitionTo(&StateMachine::sendingSteps);
@@ -81,11 +81,12 @@ void StateMachine::waitAck(){
         if (!_comm.centralConnected() || (millis() - _stateStartTime >= Config::BLE_ACK_TIMEOUT)) {
             _lastAttempt = millis(); 
             exit = true;
+            _isDelaying = false; 
         } else if (_comm.ackReceived()) {
             _counter.cleanBuffer();
             if (_counter.hasPendingData()) {
-                isDelaying = true;
-                delayStart = millis();
+                _isDelaying = true;
+                _delayStart = millis();
             } else {
                 exit = true;
             }
@@ -102,9 +103,12 @@ void StateMachine::transitionTo(void(StateMachine::*nextTask)()){
 }
 
 int StateMachine::getSleepTime(){
-    int sleep = Config::MINUTE_INTERVAL - 50;
-    if(_currentTask != &StateMachine::idle){
+    int sleep = Config::MINUTE_INTERVAL;
+    if(_currentTask == &StateMachine::sendingSteps || _currentTask == &StateMachine::waitAck){
         sleep = 10;
+    } 
+    else if(_currentTask == &StateMachine::advertising){
+        sleep = 30;
     }
     return sleep;
 }

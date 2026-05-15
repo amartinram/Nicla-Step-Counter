@@ -38,6 +38,9 @@ class StateMachine{
         unsigned long _lastPacketTime;
         unsigned long _lastAttempt;
         unsigned long _stateStartTime;
+
+        unsigned long _delayStart;
+        bool _isDelaying;
 };
 
 #endif

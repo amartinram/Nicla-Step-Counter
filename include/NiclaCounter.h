@@ -13,14 +13,21 @@ class NiclaCounter{
         NiclaCounter(unsigned long minInterval);
 
         void beginSensor();
+
         void update();
+
         void cleanBuffer();
 
         bool hasPendingData() const;
+
         const uint8_t* getBuffer() const;
+
         int getDumpDay() const;
+
         uint32_t getTotalSteps() const;
+
         int getMinute() const;
+
         void waitForInterrupt(int ms);
 
     private:
@@ -40,8 +47,11 @@ class NiclaCounter{
         volatile bool _tickerOk = false;
 
         rtos::Semaphore _wakeSignal{0, 1};
+
         void recordSteps();
+
         void irqHandler();
+        
         void pushDay(); 
 };
 
@@ -56,9 +66,9 @@ template <size_t DUMP_DAY, size_t MAX_DAYS>
 void NiclaCounter<DUMP_DAY, MAX_DAYS>::beginSensor(){
     nicla::begin(); 
     nicla::leds.setColor(off);
-    BHY2.begin(); 
+    BHY2.begin(NICLA_STANDALONE); 
     _stepCounter.begin();
-    _ticker.attach(mbed::callback(this,&NiclaCounter::irqHandler),(float)_minInterval/1000);
+    _ticker.attach(mbed::callback(this,&NiclaCounter::irqHandler),std::chrono::milliseconds(_minInterval));
 }
 
 template <size_t DUMP_DAY, size_t MAX_DAYS>
