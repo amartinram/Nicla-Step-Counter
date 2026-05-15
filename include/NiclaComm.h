@@ -15,11 +15,9 @@ class NiclaComm{
 
         bool centralConnected();
 
-        void sendHeader(int length, uint32_t totalSteps, int8_t battery);
+        void sendHeader(uint16_t length, uint32_t totalSteps, int8_t battery);
 
-        bool sendPackets(const uint8_t* dailyLog, int length);
-
-        int getOffset();
+        bool sendPackets(const uint8_t* dailyLog, uint16_t length);
 
         bool isSubscribed();
 
@@ -30,7 +28,7 @@ class NiclaComm{
     private:
         BLEService _stepService; 
         BLECharacteristic _logCharacteristic;
-        int _offset = 0;
+        uint16_t _offset = 0;
 };
 
 #endif

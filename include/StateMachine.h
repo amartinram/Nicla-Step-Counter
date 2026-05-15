@@ -13,9 +13,9 @@ class StateMachine{
 
         void run();
 
-        int getSleepTime();
+        uint32_t getSleepTime();
 
-        void sleep(int ms);
+        void sleep(uint32_t ms);
 
     private:
         typedef void (StateMachine::*StatePtr)();
@@ -34,13 +34,13 @@ class StateMachine{
         NiclaCounter<Config::DUMP_DAY,Config::MAX_DAYS> _counter;
         NiclaComm _comm;
         
-        bool _headerSent;
-        unsigned long _lastPacketTime;
-        unsigned long _lastAttempt;
-        unsigned long _stateStartTime;
+        uint32_t _lastPacketTime;
+        uint32_t _lastAttempt;
+        uint32_t _stateStartTime;
+        uint32_t _delayStart;
 
-        unsigned long _delayStart;
-        bool _isDelaying;
+        bool _headerSent;
+        bool _waitingBetweenDays;
 };
 
 #endif

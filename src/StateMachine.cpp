@@ -8,7 +8,7 @@ StateMachine::StateMachine():
     _lastAttempt(0),
     _stateStartTime(0),
     _delayStart(0),
-    _isDelaying(false)
+    _waitingBetweenDays(false)
 {}
 
 void StateMachine::initialize(){
@@ -69,23 +69,22 @@ void StateMachine::sendingSteps(){
 void StateMachine::waitAck(){
     bool exit = false;
 
-    if (_isDelaying) {
+    if (_waitingBetweenDays) {
         if (millis() - _delayStart >= 200) {
-            _isDelaying = false;
+            _waitingBetweenDays = false;
             _headerSent = false;
             _stateStartTime = millis();
             transitionTo(&StateMachine::sendingSteps);
         }
-    } 
-    else {
+    }else {
         if (!_comm.centralConnected() || (millis() - _stateStartTime >= Config::BLE_ACK_TIMEOUT)) {
             _lastAttempt = millis(); 
             exit = true;
-            _isDelaying = false; 
+            _waitingBetweenDays = false; 
         } else if (_comm.ackReceived()) {
             _counter.cleanBuffer();
             if (_counter.hasPendingData()) {
-                _isDelaying = true;
+                _waitingBetweenDays = true;
                 _delayStart = millis();
             } else {
                 exit = true;
@@ -102,8 +101,8 @@ void StateMachine::transitionTo(void(StateMachine::*nextTask)()){
     _currentTask = nextTask;
 }
 
-int StateMachine::getSleepTime(){
-    int sleep = Config::MINUTE_INTERVAL;
+uint32_t StateMachine::getSleepTime(){
+    uint16_t sleep = Config::MINUTE_INTERVAL;
     if(_currentTask == &StateMachine::sendingSteps || _currentTask == &StateMachine::waitAck){
         sleep = 10;
     } 
@@ -113,6 +112,6 @@ int StateMachine::getSleepTime(){
     return sleep;
 }
 
-void StateMachine::sleep(int ms){
+void StateMachine::sleep(uint32_t ms){
     _counter.waitForInterrupt(ms);
 }

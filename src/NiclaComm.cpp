@@ -31,7 +31,7 @@ bool NiclaComm::centralConnected(){
     return BLE.connected();
 }
 
-void NiclaComm::sendHeader(int length, uint32_t totalSteps, int8_t battery){
+void NiclaComm::sendHeader(uint16_t length, uint32_t totalSteps, int8_t battery){
     uint8_t header[9];
     header[0] = 0xAA; 
     header[1] = 0xBB; 
@@ -47,13 +47,9 @@ void NiclaComm::sendHeader(int length, uint32_t totalSteps, int8_t battery){
     _offset = 0;
 }
 
-int NiclaComm::getOffset(){
-    return _offset;
-}
-
-bool NiclaComm::sendPackets(const uint8_t* dailyLog, int length){
-    int bytesRemaining = length - _offset;
-    int chunkSize = (bytesRemaining > 244) ? 244 : bytesRemaining;
+bool NiclaComm::sendPackets(const uint8_t* dailyLog, uint16_t length){
+    uint16_t bytesRemaining = length - _offset;
+    uint16_t chunkSize = (bytesRemaining > 244) ? 244 : bytesRemaining;
             
     _logCharacteristic.writeValue(dailyLog + _offset, chunkSize);
     _offset += chunkSize;

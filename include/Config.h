@@ -2,13 +2,13 @@
 #define CONFIG_H
 
 namespace Config {
-    constexpr int DUMP_DAY = 60; 
-    constexpr int MAX_DAYS = 3; 
-    constexpr long MINUTE_INTERVAL = 60000;
+    constexpr uint16_t DUMP_DAY = 60; 
+    constexpr uint8_t MAX_DAYS = 3; 
 
-    constexpr unsigned long BLE_RETRY_INTERVAL = 1800000; 
-    constexpr unsigned long BLE_ADVERTISE_TIMEOUT = 120000; 
-    constexpr unsigned long BLE_ACK_TIMEOUT = 10000;
+    constexpr uint32_t MINUTE_INTERVAL = 60000;
+    constexpr uint32_t BLE_RETRY_INTERVAL = 1800000; 
+    constexpr uint32_t BLE_ADVERTISE_TIMEOUT = 120000; 
+    constexpr uint32_t BLE_ACK_TIMEOUT = 10000;
 }
 
 #endif

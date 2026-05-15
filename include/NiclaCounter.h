@@ -10,7 +10,7 @@
 template <size_t DUMP_DAY, size_t MAX_DAYS>
 class NiclaCounter{
     public:
-        NiclaCounter(unsigned long minInterval);
+        NiclaCounter(uint32_t minInterval);
 
         void beginSensor();
 
@@ -22,24 +22,20 @@ class NiclaCounter{
 
         const uint8_t* getBuffer() const;
 
-        int getDumpDay() const;
-
         uint32_t getTotalSteps() const;
 
-        int getMinute() const;
-
-        void waitForInterrupt(int ms);
+        void waitForInterrupt(uint32_t ms);
 
     private:
         uint8_t _activeLog[DUMP_DAY];
         uint8_t _sendLog[DUMP_DAY * MAX_DAYS];
+        uint8_t _sendHead = 0;    
+        uint8_t _sendTail = 0;  
+        uint8_t _daysStored = 0; 
 
-        int _currentMinuteIndex = 0;
-        int _sendHead = 0;    
-        int _sendTail = 0;  
-        int _daysStored = 0; 
+        uint16_t _currentMinuteIndex = 0;
 
-        unsigned long _minInterval;
+        uint32_t _minInterval;
         uint32_t _lastTotalSteps = 0;
 
         Sensor _stepCounter{SENSOR_ID_STC};
@@ -56,7 +52,7 @@ class NiclaCounter{
 };
 
 template <size_t DUMP_DAY, size_t MAX_DAYS>
-NiclaCounter<DUMP_DAY, MAX_DAYS>::NiclaCounter(unsigned long minInterval):
+NiclaCounter<DUMP_DAY, MAX_DAYS>::NiclaCounter(uint32_t minInterval):
     _minInterval(minInterval) {
     memset(_activeLog, 0, DUMP_DAY);
     memset(_sendLog, 0, DUMP_DAY * MAX_DAYS);
@@ -145,28 +141,18 @@ const uint8_t* NiclaCounter<DUMP_DAY, MAX_DAYS>::getBuffer() const{
 }
 
 template <size_t DUMP_DAY, size_t MAX_DAYS>
-int NiclaCounter<DUMP_DAY, MAX_DAYS>::getDumpDay() const{
-    return DUMP_DAY;
-}
-
-template <size_t DUMP_DAY, size_t MAX_DAYS>
 uint32_t NiclaCounter<DUMP_DAY, MAX_DAYS>::getTotalSteps() const {
     uint32_t total = 0; 
-    int startIdx = _sendHead * DUMP_DAY;
+    uint16_t startIdx = _sendHead * DUMP_DAY;
 
-    for (int i = 0; i < DUMP_DAY; i++) { 
+    for (uint16_t i = 0; i < DUMP_DAY; i++) { 
         total += _sendLog[startIdx + i]; 
     }
     return total;
 }
 
-template <size_t DUMP_DAY, size_t MAX_DAYS>
-int NiclaCounter<DUMP_DAY, MAX_DAYS>::getMinute() const{
-    return _currentMinuteIndex;
-}
-
 template<size_t DUMP_DAY, size_t MAX_DAYS>
-void NiclaCounter<DUMP_DAY,MAX_DAYS>::waitForInterrupt(int ms){
+void NiclaCounter<DUMP_DAY,MAX_DAYS>::waitForInterrupt(uint32_t ms){
     _wakeSignal.try_acquire_for(std::chrono::milliseconds(ms));
 }
 
