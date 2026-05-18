@@ -2,8 +2,8 @@
 #define CONFIG_H
 
 namespace Config {
-    constexpr uint16_t DUMP_DAY = 60; 
-    constexpr uint8_t MAX_DAYS = 3; 
+    constexpr uint16_t DUMP_DAY = 1440; 
+    constexpr uint8_t MAX_DAYS = 2; 
 
     constexpr uint32_t MINUTE_INTERVAL = 60000;
     constexpr uint32_t BLE_RETRY_INTERVAL = 1800000; 

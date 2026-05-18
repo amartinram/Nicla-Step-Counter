@@ -13,9 +13,9 @@ void NiclaComm::begin(){
     BLE.setLocalName("Nicla_Steps"); 
     BLE.setAdvertisedService(_stepService);
     _stepService.addCharacteristic(_logCharacteristic);
+    BLE.setAdvertisingInterval(800);
     BLE.addService(_stepService);
     
-    _logCharacteristic.writeValue((uint8_t)0);
 }
 
 bool NiclaComm::ackReceived(){

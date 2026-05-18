@@ -3,11 +3,11 @@
 StateMachine::StateMachine():
     _counter(Config::MINUTE_INTERVAL), 
     _currentTask(&StateMachine::idle),
-    _headerSent(false),
     _lastPacketTime(0),
     _lastAttempt(0),
     _stateStartTime(0),
     _delayStart(0),
+    _headerSent(false),
     _waitingBetweenDays(false)
 {}
 
@@ -102,12 +102,12 @@ void StateMachine::transitionTo(void(StateMachine::*nextTask)()){
 }
 
 uint32_t StateMachine::getSleepTime(){
-    uint16_t sleep = Config::MINUTE_INTERVAL;
+    uint32_t sleep = Config::MINUTE_INTERVAL;
     if(_currentTask == &StateMachine::sendingSteps || _currentTask == &StateMachine::waitAck){
         sleep = 10;
     } 
     else if(_currentTask == &StateMachine::advertising){
-        sleep = 30;
+        sleep = 100;
     }
     return sleep;
 }

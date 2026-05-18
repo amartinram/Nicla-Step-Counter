@@ -6,8 +6,8 @@
 #include "Nicla_System.h" 
 #include <mbed.h>
 #include <rtos.h>
+#include "Config.h"
 
-template <size_t DUMP_DAY, size_t MAX_DAYS>
 class NiclaCounter{
     public:
         NiclaCounter(uint32_t minInterval);
@@ -27,8 +27,8 @@ class NiclaCounter{
         void waitForInterrupt(uint32_t ms);
 
     private:
-        uint8_t _activeLog[DUMP_DAY];
-        uint8_t _sendLog[DUMP_DAY * MAX_DAYS];
+        uint8_t _activeLog[Config::DUMP_DAY];
+        uint8_t _sendLog[Config::DUMP_DAY * Config::MAX_DAYS];
         uint8_t _sendHead = 0;    
         uint8_t _sendTail = 0;  
         uint8_t _daysStored = 0; 
@@ -50,110 +50,5 @@ class NiclaCounter{
         
         void pushDay(); 
 };
-
-template <size_t DUMP_DAY, size_t MAX_DAYS>
-NiclaCounter<DUMP_DAY, MAX_DAYS>::NiclaCounter(uint32_t minInterval):
-    _minInterval(minInterval) {
-    memset(_activeLog, 0, DUMP_DAY);
-    memset(_sendLog, 0, DUMP_DAY * MAX_DAYS);
-}
-
-template <size_t DUMP_DAY, size_t MAX_DAYS>
-void NiclaCounter<DUMP_DAY, MAX_DAYS>::beginSensor(){
-    nicla::begin(); 
-    nicla::leds.setColor(off);
-    BHY2.begin(NICLA_STANDALONE); 
-    _stepCounter.begin();
-    _ticker.attach(mbed::callback(this,&NiclaCounter::irqHandler),std::chrono::milliseconds(_minInterval));
-}
-
-template <size_t DUMP_DAY, size_t MAX_DAYS>
-void NiclaCounter<DUMP_DAY, MAX_DAYS>::pushDay(){
-    memcpy(&_sendLog[_sendTail * DUMP_DAY], _activeLog, DUMP_DAY);
-
-    if (_daysStored == MAX_DAYS) {
-        _sendHead = (_sendHead + 1) % MAX_DAYS;
-    } else {
-        _daysStored++;
-    }
-    
-    _sendTail = (_sendTail + 1) % MAX_DAYS;
-
-    _currentMinuteIndex = 0;
-    memset(_activeLog, 0, DUMP_DAY); 
-}
-
-template <size_t DUMP_DAY, size_t MAX_DAYS>
-void NiclaCounter<DUMP_DAY, MAX_DAYS>::recordSteps(){
-    uint32_t currentTotalSteps = _stepCounter.value();
-    uint32_t stepsDiff;
-
-    if (currentTotalSteps >= _lastTotalSteps) {
-      stepsDiff = currentTotalSteps - _lastTotalSteps;
-    } else {
-      stepsDiff = currentTotalSteps; 
-    }
-    
-    uint8_t stepsThisMinute = (stepsDiff > 255) ? 255 : (uint8_t)stepsDiff; 
-    _lastTotalSteps = currentTotalSteps;
-    
-    if (_currentMinuteIndex < DUMP_DAY) {
-      _activeLog[_currentMinuteIndex++] = stepsThisMinute;
-    }
-    
-    if (_currentMinuteIndex >= DUMP_DAY) {
-        pushDay();
-    }
-}
-
-template <size_t DUMP_DAY, size_t MAX_DAYS>
-void NiclaCounter<DUMP_DAY, MAX_DAYS>::irqHandler(){
-    _tickerOk = true;
-    _wakeSignal.release();
-}
-
-template <size_t DUMP_DAY, size_t MAX_DAYS>
-void NiclaCounter<DUMP_DAY, MAX_DAYS>::update(){
-    BHY2.update(); 
-    if(_tickerOk){
-        _tickerOk = false;
-        recordSteps();
-    }
-}
-
-template <size_t DUMP_DAY, size_t MAX_DAYS>
-void NiclaCounter<DUMP_DAY, MAX_DAYS>::cleanBuffer(){
-    if (_daysStored > 0) {
-        memset(&_sendLog[_sendHead * DUMP_DAY], 0, DUMP_DAY); 
-        _sendHead = (_sendHead + 1) % MAX_DAYS;
-        _daysStored--;
-    }
-}
-
-template <size_t DUMP_DAY, size_t MAX_DAYS>
-bool NiclaCounter<DUMP_DAY, MAX_DAYS>::hasPendingData() const{
-    return _daysStored > 0;
-}
-
-template <size_t DUMP_DAY, size_t MAX_DAYS>
-const uint8_t* NiclaCounter<DUMP_DAY, MAX_DAYS>::getBuffer() const{
-    return &_sendLog[_sendHead * DUMP_DAY];
-}
-
-template <size_t DUMP_DAY, size_t MAX_DAYS>
-uint32_t NiclaCounter<DUMP_DAY, MAX_DAYS>::getTotalSteps() const {
-    uint32_t total = 0; 
-    uint16_t startIdx = _sendHead * DUMP_DAY;
-
-    for (uint16_t i = 0; i < DUMP_DAY; i++) { 
-        total += _sendLog[startIdx + i]; 
-    }
-    return total;
-}
-
-template<size_t DUMP_DAY, size_t MAX_DAYS>
-void NiclaCounter<DUMP_DAY,MAX_DAYS>::waitForInterrupt(uint32_t ms){
-    _wakeSignal.try_acquire_for(std::chrono::milliseconds(ms));
-}
 
 #endif

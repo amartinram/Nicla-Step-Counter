@@ -31,7 +31,7 @@ class StateMachine{
         
         void transitionTo(StatePtr nextTask);
 
-        NiclaCounter<Config::DUMP_DAY,Config::MAX_DAYS> _counter;
+        NiclaCounter _counter;
         NiclaComm _comm;
         
         uint32_t _lastPacketTime;
